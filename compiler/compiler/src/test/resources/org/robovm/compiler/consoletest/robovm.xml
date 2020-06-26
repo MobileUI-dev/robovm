@@ -1,0 +1,5 @@
+<config>
+    <executableName>test-main</executableName>
+    <mainClass>org.robovm.compiler.consoletest.main.TestMain</mainClass>
+    <smartSkipRebuild>true</smartSkipRebuild>
+</config>

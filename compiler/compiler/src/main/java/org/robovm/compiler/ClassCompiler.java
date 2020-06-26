@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 RoboVM AB
+ * Copyright (C) 2020 Daniel Thommes, NeverNull GmbH, <daniel.thommes@nevernull.io>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -117,14 +118,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
@@ -245,10 +239,37 @@ public class ClassCompiler {
     
     public boolean mustCompile(Clazz clazz) {
         File oFile = config.getOFile(clazz);
-        if (!oFile.exists() || oFile.lastModified() < clazz.lastModified() || oFile.length() == 0) {
+        if (!oFile.exists() || oFile.length() == 0) {
             return true;
         }
-        
+        if (oFile.lastModified() < clazz.lastModified()) {
+            if (!config.isSmartSkipRebuild()) {
+                //No goodies for now
+                return true;
+            }
+            // Be smarter: Is this REALLY a new class file?
+            try {
+                byte[] clazzMd5 = clazz.getMD5();
+                File md5File = config.getMd5File(clazz);
+                if (md5File.exists()) {
+                    byte[] existingMd5 = FileUtils.readFileToByteArray(md5File);
+                    if (Arrays.equals(existingMd5, clazzMd5)) {
+                        oFile.setLastModified(clazz.lastModified());
+                        config.getLogger().debug("MD5 not changed: %s", clazz);
+                    } else {
+                        // Yes, it's really new
+                        return true;
+                    }
+                } else {
+                    // MD5 file does not exist - user has switched smartSkipRebuild on
+                    return true;
+                }
+            } catch (Exception e) {
+                config.getLogger().error("Error when computing MD5 %s", e);
+                return true;
+            }
+        }
+
         ClazzInfo ci = clazz.getClazzInfo();
         if (ci == null) {
             return true;
@@ -299,6 +320,10 @@ public class ClassCompiler {
             config.getLogger().info("Compiling %s (%s %s %s)", clazz, os, arch, config.isDebug() ? "debug" : "release");
             output.reset();
             compile(clazz, output);
+            if (config.isSmartSkipRebuild()) {
+                File md5File = config.getMd5File(clazz);
+                FileUtils.writeByteArrayToFile(md5File, clazz.getMD5());
+            }
         } catch (Throwable t) {
             if (t instanceof IOException) {
                 throw (IOException) t;

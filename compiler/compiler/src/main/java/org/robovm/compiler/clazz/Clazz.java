@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +45,7 @@ public abstract class Clazz implements Comparable<Clazz> {
 
     private ClazzInfo clazzInfo = null; 
     private SootClass sootClass = null;
+    private byte[] md5 = null;
 
     // added attachments fields as it is required to keep information in build cycle between calls
     // as it is not possible to keep it in plugin (due to statement that different operations of plugin
@@ -78,6 +80,20 @@ public abstract class Clazz implements Comparable<Clazz> {
         return internalName;
     }
     
+
+    public byte[] getMD5() {
+        if (md5 == null) {
+            try {
+                MessageDigest md = MessageDigest.getInstance("MD5");
+                md.update(getBytes());
+                md5 = md.digest();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return md5;
+    }
+
     public ClazzInfo getClazzInfo() {
         if (clazzInfo == null) {
             File infoFile = clazzes.getConfig().getInfoFile(this);

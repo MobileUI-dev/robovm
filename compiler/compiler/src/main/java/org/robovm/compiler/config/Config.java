@@ -656,6 +656,10 @@ public class Config {
         return new File(getCacheDir(clazz.getPath()), getFileName(clazz, "class.o"));
     }
 
+    public File getMd5File(Clazz clazz) {
+        return new File(getCacheDir(clazz.getPath()), getFileName(clazz, "class.md5"));
+    }
+
     public File getLinesOFile(Clazz clazz) {
         return new File(getCacheDir(clazz.getPath()), getFileName(clazz, "class.lines.o"));
     }
